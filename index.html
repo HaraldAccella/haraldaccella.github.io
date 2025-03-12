@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MQTT Sensor Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .mqtt-config {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .mqtt-config input {
+      margin: 5px;
+      padding: 8px;
+      width: 220px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .mqtt-config button {
+      padding: 8px 16px;
+      margin: 5px;
+      border: none;
+      background-color: #007BFF;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .mqtt-config button:hover {
+      background-color: #0056b3;
+    }
+    #connectionStatus {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #007BFF;
+    }
+    /* Arrange sensor panels in a responsive grid */
+    #tanks {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-gap: 10px;
+    }
+    .tank {
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 10px;
+      background: #fafafa;
+    }
+    .tank h3 {
+      margin-top: 0;
+      font-size: 1.1em;
+      text-align: center;
+    }
+    .tank div {
+      margin: 5px 0;
+    }
+    .tank label {
+      font-weight: bold;
+    }
+    /* Styles for the tank graphic */
+    .tank-graphic {
+      width: 50px;
+      height: 150px;
+      border: 1px solid #ccc;
+      background-color: #e0e0e0;
+      position: relative;
+      margin: 10px auto;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    .tank-fill {
+      background-color: #28a745;  /* green color */
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      transition: height 0.5s ease;
+      box-sizing: border-box;
+    }
+    #log {
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 150px;
+      overflow-y: scroll;
+      background: #fff;
+      margin-top: 20px;
+    }
+  </style>
+  <!-- Use the Paho MQTT client library from cdnjs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>MQTT Sensor Dashboard</h1>
+    <div class="mqtt-config">
+      <input type="text" id="broker" placeholder="Broker Address" value="YOUR_BROKER_ADDRESS">
+      <input type="text" id="port" placeholder="Port" value="YOUR_WEBSOCKET_PORT">
+      <input type="text" id="sensorTopic" placeholder="Sensor Topic" value="CUSTOMER_NAME/sensors">
+      <button onclick="connectMQTT()">Connect</button>
+      <div id="connectionStatus">Not Connected</div>
+    </div>
+    <hr>
+    <div id="tanks">
+      <!-- Repeat for 8 sensors/panels -->
+      <!-- Panel 0 -->
+      <div class="tank" id="tank0">
+        <h3>Sensor 1</h3>
+        <div>Raw Value: <span id="sensor0">-</span></div>
+        <div>
+          Measurement Type: 
+          <select id="measurementType0" onchange="updateCalculated(0)">
+            <option value="tank" selected>Tank Level</option>
+            <option value="temp">Temperature</option>
+            <option value="raw">Raw</option>
+          </select>
+        </div>
+        <div id="fullHeightContainer0">
+          <label>Full Height:</label>
+          <input type="number" id="fullHeight0" value="100" onchange="updateCalculated(0)">
+        </div>
+        <div>Calculated: <span id="level0">-</span></div>
+        <div id="tankGraphicContainer0" class="tank-graphic">
+          <div class="tank-fill" id="fill0"></div>
+        </div>
+      </div>
+      <!-- Panel 1 -->
+      <div class="tank" id="tank1">
+        <h3>Sensor 2</h3>
+        <div>Raw Value: <span id="sensor1">-</span></div>
+        <div>
+          Measurement Type: 
+          <select id="measurementType1" onchange="updateCalculated(1)">
+            <option value="tank" selected>Tank Level</option>
+            <option value="temp">Temperature</option>
+            <option value="raw">Raw</option>
+          </select>
+        </div>
+        <div id="fullHeightContainer1">
+          <label>Full Height:</label>
+          <input type="number" id="fullHeight1" value="100" onchange="updateCalculated(1)">
+        </div>
+        <div>Calculated: <span id="level1">-</span></div>
+        <div id="tankGraphicContainer1" class="tank-graphic">
+          <div class="tank-fill" id="fill1"></div>
+        </div>
+      </div>
+      <!-- Panel 2 -->
+      <div class="tank" id="tank2">
+        <h3>Sensor 3</h3>
+        <div>Raw Value: <span id="sensor2">-</span></div>
+        <div>
+          Measurement Type: 
+          <select id="measurementType2" onchange="updateCalculated(2)">
+            <option value="tank" selected>Tank Level</option>
+            <option value="temp">Temperature</option>
+            <option value="raw">Raw</option>
+          </select>
+        </div>
+        <div id="fullHeightContainer2">
+          <label>Full Height:</label>
+          <input type="number" id="fullHeight2" value="100" onchange="updateCalculated(2)">
+        </div>
+        <div>Calculated: <span id="level2">-</span></div>
+        <div id="tankGraphicContainer2" class="tank-graphic">
+          <div class="tank-fill" id="fill2"></div>
+        </div>
+      </div>
+      <!-- Panel 3 -->
+      <div class="tank" id="tank3">
+        <h3>Sensor 4</h3>
+        <div>Raw Value: <span id="sensor3">-</span></div>
+        <div>
+          Measurement Type: 
+          <select id="measurementType3" onchange="updateCalculated(3)">
+            <option value="tank" selected>Tank Level</option>
+            <option value="temp">Temperature</option>
+            <option value="raw">Raw</option>
+          </select>
+        </div>
+        <div id="fullHeightContainer3">
+          <label>Full Height:</label>
+          <input type="number" id="fullHeight3" value="100" onchange="updateCalculated(3)">
+        </div>
+        <div>Calculated: <span id="level3">-</span></div>
+        <div id="tankGraphicContainer3" class="tank-graphic">
+          <div class="tank-fill" id="fill3"></div>
+        </div>
+      </div>
+      <!-- Panel 4 -->
+      <div class="tank" id="tank4">
+        <h3>Sensor 5</h3>
+        <div>Raw Value: <span id="sensor4">-</span></div>
+        <div>
+          Measurement Type: 
+          <select id="measurementType4" onchange="updateCalculated(4)">
+            <option value="tank" selected>Tank Level</option>
+            <option value="temp">Temperature</option>
+            <option value="raw">Raw</option>
+          </select>
+        </div>
+        <div id="fullHeightContainer4">
+          <label>Full Height:</label>
+          <input type="number" id="fullHeight4" value="100" onchange="updateCalculated(4)">
+        </div>
+        <div>Calculated: <span id="level4">-</span></div>
+        <div id="tankGraphicContainer4" class="tank-graphic">
+          <div class="tank-fill" id="fill4"></div>
+        </div>
+      </div>
+      <!-- Panel 5 -->
+      <div class="tank" id="tank5">
+        <h3>Sensor 6</h3>
+        <div>Raw Value: <span id="sensor5">-</span></div>
+        <div>
+          Measurement Type: 
+          <select id="measurementType5" onchange="updateCalculated(5)">
+            <option value="tank" selected>Tank Level</option>
+            <option value="temp">Temperature</option>
+            <option value="raw">Raw</option>
+          </select>
+        </div>
+        <div id="fullHeightContainer5">
+          <label>Full Height:</label>
+          <input type="number" id="fullHeight5" value="100" onchange="updateCalculated(5)">
+        </div>
+        <div>Calculated: <span id="level5">-</span></div>
+        <div id="tankGraphicContainer5" class="tank-graphic">
+          <div class="tank-fill" id="fill5"></div>
+        </div>
+      </div>
+      <!-- Panel 6 -->
+      <div class="tank" id="tank6">
+        <h3>Sensor 7</h3>
+        <div>Raw Value: <span id="sensor6">-</span></div>
+        <div>
+          Measurement Type: 
+          <select id="measurementType6" onchange="updateCalculated(6)">
+            <option value="tank" selected>Tank Level</option>
+            <option value="temp">Temperature</option>
+            <option value="raw">Raw</option>
+          </select>
+        </div>
+        <div id="fullHeightContainer6">
+          <label>Full Height:</label>
+          <input type="number" id="fullHeight6" value="100" onchange="updateCalculated(6)">
+        </div>
+        <div>Calculated: <span id="level6">-</span></div>
+        <div id="tankGraphicContainer6" class="tank-graphic">
+          <div class="tank-fill" id="fill6"></div>
+        </div>
+      </div>
+      <!-- Panel 7 -->
+      <div class="tank" id="tank7">
+        <h3>Sensor 8</h3>
+        <div>Raw Value: <span id="sensor7">-</span></div>
+        <div>
+          Measurement Type: 
+          <select id="measurementType7" onchange="updateCalculated(7)">
+            <option value="tank" selected>Tank Level</option>
+            <option value="temp">Temperature</option>
+            <option value="raw">Raw</option>
+          </select>
+        </div>
+        <div id="fullHeightContainer7">
+          <label>Full Height:</label>
+          <input type="number" id="fullHeight7" value="100" onchange="updateCalculated(7)">
+        </div>
+        <div>Calculated: <span id="level7">-</span></div>
+        <div id="tankGraphicContainer7" class="tank-graphic">
+          <div class="tank-fill" id="fill7"></div>
+        </div>
+      </div>
+    </div>
+    <hr>
+    <div id="log"></div>
+  </div>
+
+  <script>
+    let client;
+
+    // Connect to MQTT broker using Paho (the style from the given example)
+    function connectMQTT() {
+      const broker = {
+        hostname: document.getElementById("broker").value,
+        port: parseInt(document.getElementById("port").value),
+        clientId: "web_" + Math.random().toString(16).substr(2, 8)
+      };
+      const sensorTopic = document.getElementById("sensorTopic").value;
+      
+      client = new Paho.MQTT.Client(broker.hostname, broker.port, broker.clientId);
+
+      client.onConnectionLost = onConnectionLost;
+      client.onMessageArrived = onMessageArrived;
+
+      updateConnectionStatus("Connecting...");
+
+      client.connect({
+        onSuccess: onConnect,
+        onFailure: onFailure,
+        useSSL: false
+      });
+
+      function onConnect() {
+        updateConnectionStatus("Connected");
+        log("Connected to MQTT broker at " + broker.hostname + ":" + broker.port);
+        client.subscribe(sensorTopic, {
+          onSuccess: function() { log("Subscribed to sensor topic: " + sensorTopic); },
+          onFailure: function(err) { log("Subscription failed: " + err.errorMessage); }
+        });
+      }
+
+      function onFailure(message) {
+        updateConnectionStatus("Connection Failed");
+        log("Connection failed: " + message.errorMessage);
+      }
+    }
+
+    function updateConnectionStatus(status) {
+      document.getElementById("connectionStatus").textContent = status;
+    }
+
+    function onConnectionLost(responseObject) {
+      if (responseObject.errorCode !== 0) {
+        updateConnectionStatus("Connection Lost");
+        log("Connection lost: " + responseObject.errorMessage);
+      }
+    }
+
+    // When a message arrives, assume it is a comma-separated string of 8 sensor values.
+    function onMessageArrived(message) {
+      log("Message received on topic <strong>" + message.destinationName + "</strong>: " + message.payloadString);
+      const sensorValues = message.payloadString.split(",");
+      if (sensorValues.length >= 8) {
+        for (let i = 0; i < 8; i++) {
+          const value = parseFloat(sensorValues[i]);
+          document.getElementById("sensor" + i).textContent = value.toFixed(2);
+          updateCalculated(i, value);
+        }
+      }
+    }
+
+    // Recalculate and update the displayed measurement based on the sensor value and the selected measurement type.
+    function updateCalculated(index, sensorVal) {
+      let sensorValue = sensorVal;
+      if (sensorValue === undefined) {
+        sensorValue = parseFloat(document.getElementById("sensor" + index).textContent);
+        if (isNaN(sensorValue)) sensorValue = 0;
+      }
+      const measurementType = document.getElementById("measurementType" + index).value;
+      let displayValue = "";
+      if (measurementType === "tank") {
+        const fullHeight = parseFloat(document.getElementById("fullHeight" + index).value);
+        const level = (sensorValue / 4095) * fullHeight;
+        displayValue = level.toFixed(2);
+        // Update graphic fill
+        let percentage = fullHeight > 0 ? (level / fullHeight) * 100 : 0;
+        document.getElementById("fill" + index).style.height = percentage + "%";
+        // Show the full height input and graphic
+        document.getElementById("fullHeightContainer" + index).style.display = "block";
+        document.getElementById("tankGraphicContainer" + index).style.display = "block";
+      } else if (measurementType === "temp") {
+        // Example conversion: 0 maps to 0°C and 4095 maps to 100°C
+        let temp = (sensorValue / 4095) * 100;
+        displayValue = temp.toFixed(2) + " °C";
+        // Hide graphic and full height input
+        document.getElementById("fullHeightContainer" + index).style.display = "none";
+        document.getElementById("tankGraphicContainer" + index).style.display = "none";
+      } else if (measurementType === "raw") {
+        displayValue = sensorValue.toFixed(2);
+        document.getElementById("fullHeightContainer" + index).style.display = "none";
+        document.getElementById("tankGraphicContainer" + index).style.display = "none";
+      }
+      document.getElementById("level" + index).textContent = displayValue;
+    }
+
+    function log(text) {
+      const logDiv = document.getElementById("log");
+      const p = document.createElement("p");
+      p.innerHTML = text;
+      logDiv.appendChild(p);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+  </script>
+</body>
+</html>
