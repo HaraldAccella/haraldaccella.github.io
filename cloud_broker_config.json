@@ -1,0 +1,6 @@
+{
+  "default_broker": "wss://broker.emqx.io:8084/mqtt",
+  "broker_name": "Eclipse Mosquitto (Free)",
+  "authentication_required": false,
+  "ssl_required": true
+}
